@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../models");
 const createError = require("../utils/create-error");
 
+// register
 exports.register = async (req, res, next) => {
   try {
     const value = validateRegister(req.body);
@@ -32,6 +33,7 @@ exports.register = async (req, res, next) => {
   }
 };
 
+// login
 exports.login = async (req, res, next) => {
   try {
     const value = validateLogin(req.body);
@@ -60,4 +62,9 @@ exports.login = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// getme
+exports.getMe = (req, res, next) => {
+  res.status(200).json({ user: req.user });
 };
