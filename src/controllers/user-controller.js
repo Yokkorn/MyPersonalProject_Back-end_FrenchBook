@@ -10,7 +10,7 @@ const {
 } = require("../config/constant");
 const { User, Friend } = require("../models");
 const createError = require("../utils/create-error");
-// const cloudinary = require("../utils/cloudinary");
+const cloudinary = require("../utils/cloudinary");
 
 exports.getUserInfoById = async (req, res, next) => {
   try {
@@ -92,9 +92,48 @@ exports.getUserInfoById = async (req, res, next) => {
 
 exports.updateProfileImage = async (req, res, next) => {
   try {
-    console.log(req.files);
-    res.status(200).json();
+    let value;
+    const { profileImage, coverImage } = req.user;
+
+    const profilePublicId = profileImage
+      ? cloudinary.getPublicId(profileImage)
+      : null;
+    const coverPublicId = coverImage
+      ? cloudinary.getPublicId(coverImage)
+      : null;
+
+    if (!req.files.profileImage && !req.files.coverImage) {
+      createError("profileImage or coverImage is required");
+    } else if (req.files.profileImage && req.files.coverImage) {
+      const [profileImage, coverImage] = await Promise.all([
+        cloudinary.upload(req.files.profileImage[0].path, profilePublicId),
+        cloudinary.upload(req.files.coverImage[0].path, coverPublicId),
+      ]);
+      value = { profileImage, coverImage };
+    } else if (req.files.profileImage) {
+      const profileImage = await cloudinary.upload(
+        req.files.profileImage[0].path,
+        profilePublicId
+      );
+      value = { profileImage };
+    } else {
+      const coverImage = await cloudinary.upload(
+        req.files.coverImage[0].path,
+        coverPublicId
+      );
+      value = { coverImage };
+    }
+
+    await User.update(value, { where: { id: req.user.id } });
+    res.status(200).json(value);
   } catch (err) {
     next(err);
+  } finally {
+    if (req.files.profileImage) {
+      fs.unlinkSync(req.files.profileImage[0].path);
+    }
+    if (req.files.coverImage) {
+      fs.unlinkSync(req.files.coverImage[0].path);
+    }
   }
 };
